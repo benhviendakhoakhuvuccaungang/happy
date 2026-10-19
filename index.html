@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Thiệp Chúc Mừng 20/10 3D</title>
+    <title>Một món quà gửi tặng đến bạn</title>
+    <!-- Open Graph cho Link Preview (Hiển thị khi gửi link qua Zalo, FB, iMessage) -->
+    <meta property="og:title" content="Một món quà gửi tặng đến bạn">
+    <meta property="og:description" content="Nhấn vào để xem món quà và lời chúc đặc biệt nhé! 🌸">
+    <meta property="og:type" content="website">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Fonts -->
@@ -345,12 +349,12 @@
             const aspect = window.innerWidth / window.innerHeight;
             // Thu nhỏ phong bì trên màn hình dọc (điện thoại)
             if (aspect < 1) {
-                camera.position.z = 25; 
+                camera.position.z = 21; // Giảm từ 25 xuống 21 để thiệp to hơn trên điện thoại
             } else {
-                camera.position.z = 18;
+                camera.position.z = 16; // Giảm từ 18 xuống 16 cho máy tính
             }
             // Nhấc toàn bộ cảnh lên trên một chút để căn giữa hoàn hảo hơn
-            camera.position.y = -1.2;
+            camera.position.y = -1.5;
         }
 
         function onWindowResize() {
@@ -447,6 +451,10 @@
 
             const tl = gsap.timeline({ onComplete: () => isAnimating = false });
             const h = 5.0; // Height of envelope
+            
+            // Tính toán tỷ lệ phóng to thư hợp lý tuỳ theo điện thoại hay máy tính
+            const aspect = window.innerWidth / window.innerHeight;
+            const targetScale = aspect < 1 ? 1.2 : 1.4;
 
             if (!isOpen) {
                 // SEQUENCE MỞ THƯ
@@ -458,7 +466,7 @@
                   .to(letterMesh.position, { y: h * 1.1, duration: 0.6, ease: "back.out(1.2)" })
                   // 3. Thư trượt xuống trước bao thư, chồm lên trên z-index và phóng to
                   .to(letterMesh.position, { y: -0.5, z: 2.0, duration: 0.8, ease: "power3.out" })
-                  .to(letterMesh.scale, { x: 1.4, y: 1.4, z: 1.4, duration: 0.8, ease: "power3.out" }, "<");
+                  .to(letterMesh.scale, { x: targetScale, y: targetScale, z: targetScale, duration: 0.8, ease: "power3.out" }, "<");
             } else {
                 // SEQUENCE ĐÓNG THƯ
                 // 1. Thư thu nhỏ và bay ngược lên trên mượt mà hơn
