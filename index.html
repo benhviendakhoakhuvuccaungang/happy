@@ -334,8 +334,15 @@
             
             // Xử lý Resize
             window.addEventListener('resize', onWindowResize, false);
-            // Xử lý Click / Touch
-            window.addEventListener('pointerdown', onPointerDown, false);
+            
+            // Cải tiến xử lý Touch / Mouse chống kẹt trên điện thoại
+            renderer.domElement.addEventListener('pointerdown', onInteract, false);
+            renderer.domElement.addEventListener('touchstart', function(e) {
+                if (e.target === renderer.domElement) {
+                    e.preventDefault(); // Ngăn nhấp nháy/double click giả lập trên iOS
+                    onInteract(e);
+                }
+            }, { passive: false });
 
             animate();
             
@@ -509,7 +516,12 @@
         function splitFlower(sprite) {
             // Xoá hoa to
             scene.remove(sprite);
-            flowers = flowers.filter(f => f !== sprite);
+            
+            // Sửa lỗi kẹt mảng dữ liệu trên điện thoại bằng splice thay vì filter
+            const index = flowers.indexOf(sprite);
+            if (index > -1) {
+                flowers.splice(index, 1);
+            }
 
             // Tạo 4 hoa nhỏ bung ra
             const numPieces = 4;
@@ -518,35 +530,44 @@
             }
         }
 
-        function onPointerDown(event) {
-            // Hỗ trợ Touch và Mouse
-            let clientX = event.clientX;
-            let clientY = event.clientY;
-            if(event.changedTouches) {
-                clientX = event.changedTouches[0].clientX;
-                clientY = event.changedTouches[0].clientY;
-            }
-
-            // Chuyển đổi tọa độ màn hình sang tọa độ 3D
-            mouse.x = (clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
-
-            raycaster.setFromCamera(mouse, camera);
-
-            // Kiểm tra va chạm với các vật thể trong scene
-            const objectsToTest = [...flowers, ...envelopeGroup.children, topFlapGroup.children[0]];
-            const intersects = raycaster.intersectObjects(objectsToTest, false);
-
-            if (intersects.length > 0) {
-                const hit = intersects[0].object;
+        function onInteract(event) {
+            try {
+                let clientX = event.clientX;
+                let clientY = event.clientY;
                 
-                if (hit.userData.isFlower && !hit.userData.isSmall) {
-                    // Chạm vào hoa to -> vỡ ra
-                    splitFlower(hit);
-                } else if (hit.userData.isEnvelope || hit.userData.isFlower === undefined) {
-                    // Chạm vào bao thư -> Mở/đóng
-                    toggleEnvelope();
+                // Fallback lấy tọa độ cảm ứng chuẩn trên các thiết bị di động
+                if (event.touches && event.touches.length > 0) {
+                    clientX = event.touches[0].clientX;
+                    clientY = event.touches[0].clientY;
+                } else if (event.changedTouches && event.changedTouches.length > 0) {
+                    clientX = event.changedTouches[0].clientX;
+                    clientY = event.changedTouches[0].clientY;
                 }
+
+                // Chuyển đổi tọa độ màn hình sang tọa độ 3D
+                mouse.x = (clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+
+                // Kiểm tra va chạm với các vật thể trong scene
+                const objectsToTest = [...flowers, ...envelopeGroup.children, topFlapGroup.children[0]];
+                const intersects = raycaster.intersectObjects(objectsToTest, false);
+
+                if (intersects.length > 0) {
+                    const hit = intersects[0].object;
+                    
+                    if (hit.userData.isFlower && !hit.userData.isSmall) {
+                        // Chạm vào hoa to -> vỡ ra
+                        splitFlower(hit);
+                    } else if (hit.userData.isEnvelope || hit.userData.isFlower === undefined) {
+                        // Chạm vào bao thư -> Mở/đóng
+                        toggleEnvelope();
+                    }
+                }
+            } catch (e) {
+                console.error("Lỗi tương tác:", e);
+                isAnimating = false; // Tránh kẹt biến trạng thái thư
             }
         }
 
@@ -649,7 +670,7 @@
             // Bắt đầu 3D Scene
             initThreeScene(letterTexture);
             
-            // Sinh sẵn vài bông hoa ban đầu vậy mới cho cập nhật
+            // Sinh sẵn vài bông hoa ban đầu
             for(let i=0; i<8; i++){
                 const rangeX = 15;
                 spawnFlower((Math.random() - 0.5) * rangeX * 2, (Math.random() - 0.5) * 10 + 5, (Math.random()-0.5)*5, Math.random() * 0.8 + 0.8, false);
