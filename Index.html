@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Thiệp Chúc Mừng 20/10 3D</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Three.js & GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #ffe4e1 0%, #ffb6c1 100%);
+            touch-action: none; /* Prevent browser scrolling/zooming */
+        }
+        .font-dancing { font-family: 'Dancing Script', cursive; }
+        
+        #canvas-container {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 10;
+        }
+
+        #input-modal {
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        #instruction {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            color: #d81b60;
+            font-weight: 700;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 1s ease;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: translateX(-50%) scale(1); opacity: 0.8; }
+            50% { transform: translateX(-50%) scale(1.05); opacity: 1; }
+            100% { transform: translateX(-50%) scale(1); opacity: 0.8; }
+        }
+    </style>
+</head>
+<body class="w-screen h-screen relative">
+
+    <!-- Floating Audio Control -->
+    <button id="audio-control" class="fixed top-4 right-4 z-40 bg-white/80 backdrop-blur-md p-3 rounded-full shadow-lg text-pink-500 hover:text-pink-600 hover:scale-110 active:scale-95 transition-all hidden cursor-pointer">
+        <!-- SVG Loa Mở -->
+        <svg id="icon-unmuted" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5 10v4a2 2 0 002 2h2.586l4.707 4.707A.996.996 0 0016 20V4a.996.996 0 00-1.707-.707L9.586 8H7a2 2 0 00-2 2z" />
+        </svg>
+        <!-- SVG Loa Tắt -->
+        <svg id="icon-muted" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clip-rule="evenodd" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+        </svg>
+    </button>
+
+    <!-- Sound Prompt Modal -->
+    <div id="sound-modal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm text-center border-4 border-pink-200">
+            <div class="text-5xl mb-4">🎵</div>
+            <h2 class="text-2xl text-pink-600 font-bold mb-3 font-dancing">Phát nhạc nền?</h2>
+            <p class="text-gray-600 mb-6 text-sm">Thiệp sẽ thú vị hơn khi có âm thanh. Bạn có muốn bật nhạc không?</p>
+            <div class="flex gap-3 justify-center">
+                <button id="btn-sound-yes" class="flex-1 bg-gradient-to-r from-pink-400 to-rose-500 text-white font-bold py-2.5 px-4 rounded-xl shadow hover:scale-105 transition-transform">Bật nhạc</button>
+                <button id="btn-sound-no" class="flex-1 bg-gray-200 text-gray-700 font-bold py-2.5 px-4 rounded-xl shadow hover:scale-105 transition-transform">Bỏ qua</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Instruction Overlay -->
+    <div id="instruction">Nhấn vào thư để mở / đóng</div>
+
+    <!-- Input Modal -->
+    <div id="input-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4" style="display: none;">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center border-4 border-pink-200">
+            <h1 class="text-3xl text-pink-600 font-dancing mb-2">Chào mừng ngày 20/10 🌸</h1>
+            <p class="text-gray-600 mb-6 text-sm">Hãy cho biết một chút thông tin để nhận món quà này nhé!</p>
+            
+            <div class="space-y-4 text-left">
+                <div>
+                    <label class="block text-pink-700 font-semibold mb-1 ml-1 text-sm">Tên của bạn là gì?</label>
+                    <input type="text" id="name-input" placeholder="Nhập tên..." class="w-full px-4 py-3 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-400 bg-pink-50/50 transition-all">
+                </div>
+                <div>
+                    <label class="block text-pink-700 font-semibold mb-1 ml-1 text-sm">Bạn bao nhiêu tuổi?</label>
+                    <input type="number" id="age-input" placeholder="Nhập tuổi..." class="w-full px-4 py-3 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-400 bg-pink-50/50 transition-all">
+                </div>
+            </div>
+
+            <p id="error-msg" class="text-red-500 text-sm mt-3 h-4 invisible">Vui lòng nhập đầy đủ tên và tuổi hợp lệ!</p>
+
+            <button id="start-btn" class="mt-4 w-full bg-gradient-to-r from-pink-400 to-rose-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-pink-400/50 hover:scale-[1.02] active:scale-[0.98] transition-all flex justify-center items-center gap-2">
+                <span>Mở Thiệp Ngay 💌</span>
+                <div id="loading-spinner" class="hidden w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="fixed bottom-2 w-full text-center z-40 pointer-events-none">
+        <p class="text-pink-600/70 text-xs font-bold tracking-wider">design by Quốc Huy - IT @2026</p>
+    </div>
+
+    <script>
+        const soundModal = document.getElementById('sound-modal');
+        const btnSoundYes = document.getElementById('btn-sound-yes');
+        const btnSoundNo = document.getElementById('btn-sound-no');
+        const audioControlBtn = document.getElementById('audio-control');
+        const iconUnmuted = document.getElementById('icon-unmuted');
+        const iconMuted = document.getElementById('icon-muted');
+        let userWantsMusic = true;
+
+        const modal = document.getElementById('input-modal');
+        const startBtn = document.getElementById('start-btn');
+        const spinner = document.getElementById('loading-spinner');
+        const nameInput = document.getElementById('name-input');
+        const ageInput = document.getElementById('age-input');
+        const errorMsg = document.getElementById('error-msg');
+        const instruction = document.getElementById('instruction');
+
+        // Three.js core variables
+        let scene, camera, renderer, raycaster, mouse;
+        let envelopeGroup, topFlapGroup, letterMesh;
+        let flowers = [];
+        let isOpen = false;
+        let isAnimating = false;
+
+        // Xử lý modal hỏi nhạc đầu tiên
+        btnSoundYes.addEventListener('click', () => {
+            userWantsMusic = true;
+            soundModal.style.display = 'none';
+            modal.style.display = 'flex'; // Hiển thị form điền tên tuổi
+        });
+
+        btnSoundNo.addEventListener('click', () => {
+            userWantsMusic = false;
+            soundModal.style.display = 'none';
+            modal.style.display = 'flex'; // Hiển thị form điền tên tuổi
+        });
+
+        // Xử lý nút bật/tắt nhạc bằng tay (nút trôi nổi góc phải)
+        audioControlBtn.addEventListener('click', () => {
+            if (bgMusic) {
+                bgMusic.muted = !bgMusic.muted; // Đảo trạng thái tắt/bật
+                if (bgMusic.muted) {
+                    iconUnmuted.classList.add('hidden');
+                    iconMuted.classList.remove('hidden');
+                } else {
+                    iconMuted.classList.add('hidden');
+                    iconUnmuted.classList.remove('hidden');
+                    bgMusic.play().catch(() => {}); // Play phòng trường hợp chưa play do browser block
+                }
+            }
+        });
+
+        function wrapText(context, text, x, y, maxWidth, lineHeight) {
+            const words = text.split(' ');
+            let line = '';
+            for(let n = 0; n < words.length; n++) {
+                const testLine = line + words[n] + ' ';
+                const metrics = context.measureText(testLine);
+                const testWidth = metrics.width;
+                if (testWidth > maxWidth && n > 0) {
+                    context.fillText(line, x, y);
+                    line = words[n] + ' ';
+                    y += lineHeight;
+                } else {
+                    line = testLine;
+                }
+            }
+            context.fillText(line, x, y);
+        }
+
+        function createLetterTexture(name, age) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1000;
+            canvas.height = 700;
+            const ctx = canvas.getContext('2d');
+
+            // Nền trắng
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Viền đứt khúc
+            ctx.beginPath();
+            ctx.setLineDash([15, 15]);
+            ctx.strokeStyle = '#f8bbd0';
+            ctx.lineWidth = 6;
+            ctx.rect(30, 30, canvas.width - 60, canvas.height - 60);
+            ctx.stroke();
+
+            // Tiêu đề
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#e11d48'; // rose-600
+            ctx.font = 'bold 85px "Dancing Script"';
+            ctx.fillText('Ngày Phụ Nữ Việt Nam', canvas.width / 2, 140);
+
+            // Nội dung
+            const pronoun = age < 27 ? 'em' : (age < 50 ? 'chị' : 'cô');
+            const prefix = `Thân gửi ${pronoun} `;
+            const displayName = name.toUpperCase();
+
+            // Lấy danh sách lời chúc
+            const messagesCo = [
+                "Nhân ngày Phụ nữ Việt Nam 20/10, kính chúc cô luôn dồi dào sức khỏe, tươi trẻ và hạnh phúc viên mãn bên gia đình.",
+                "Kính chúc cô ngày 20/10 thật nhiều niềm vui, rạng rỡ như những đóa hoa và luôn bình an trong cuộc sống.",
+                "Gửi ngàn lời chúc tốt đẹp nhất đến cô nhân ngày 20/10. Mong cô luôn giữ được nụ cười tươi tắn và tinh thần lạc quan mỗi ngày.",
+                "Kính chúc cô một ngày lễ ngập tràn tình yêu thương, nhận được thật nhiều hoa và những lời chúc ý nghĩa nhất.",
+                "Nhân dịp 20/10, kính chúc cô luôn vui vẻ, vạn sự như ý và mãi là tấm gương sáng, người phụ nữ tuyệt vời để chúng cháu noi theo."
+            ];
+            
+            const messagesChi = [
+                "Chúc chị ngày 20/10 luôn rạng rỡ, xinh đẹp, thành công thăng tiến trong công việc và viên mãn trong cuộc sống.",
+                "Nhân ngày Phụ nữ Việt Nam, chúc chị luôn tràn đầy năng lượng, giữ vững sự tự tin, bản lĩnh và đạt được mọi ước mơ.",
+                "Chúc chị yêu ngày 20/10 ngập tràn tiếng cười, mãi trẻ trung, hạnh phúc và nhận được thật nhiều quà bất ngờ.",
+                "Chúc chị ngày 20/10 trọn vẹn niềm vui. Mong chị luôn bình an, vui vẻ và được mọi người xung quanh yêu thương, trân trọng.",
+                "Chúc người chị của em một ngày 20/10 thật rực rỡ! Hãy luôn yêu thương bản thân và tỏa sáng theo cách tuyệt vời riêng của mình nhé."
+            ];
+
+            const messagesEm = [
+                "Chúc em ngày 20/10 luôn rạng rỡ, xinh đẹp, thành công thăng tiến trong công việc và viên mãn trong cuộc sống.",
+                "Nhân ngày Phụ nữ Việt Nam, chúc em luôn tràn đầy năng lượng, giữ vững sự tự tin, bản lĩnh và đạt được mọi ước mơ.",
+                "Chúc em ngày 20/10 ngập tràn tiếng cười, mãi trẻ trung, hạnh phúc và nhận được thật nhiều quà bất ngờ.",
+                "Chúc em ngày 20/10 trọn vẹn niềm vui. Mong em luôn bình an, vui vẻ và được mọi người xung quanh yêu thương, trân trọng.",
+                "Chúc em một ngày 20/10 thật rực rỡ! Hãy luôn yêu thương bản thân và tỏa sáng theo cách tuyệt vời riêng của mình nhé."
+            ];
+
+            let messageList;
+            if (pronoun === 'em') messageList = messagesEm;
+            else if (pronoun === 'chị') messageList = messagesChi;
+            else messageList = messagesCo;
+
+            const msg = messageList[Math.floor(Math.random() * messageList.length)];
+
+            // Căn giữa 2 định dạng chữ khác nhau trên cùng 1 dòng
+            ctx.font = '50px "Quicksand"';
+            const prefixWidth = ctx.measureText(prefix).width;
+            
+            ctx.font = 'bold 65px "Quicksand"';
+            const nameWidth = ctx.measureText(displayName).width;
+            
+            const totalWidth = prefixWidth + nameWidth;
+            const startX = (canvas.width - totalWidth) / 2;
+
+            // Vẽ chữ "Chúc chị/cô " bình thường
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#374151'; // gray-700
+            ctx.font = '50px "Quicksand"';
+            ctx.fillText(prefix, startX, 280);
+
+            // Vẽ Tên: Viết hoa, to hơn và khác màu
+            ctx.fillStyle = '#d81b60'; // Màu hồng đậm nổi bật
+            ctx.font = 'bold 65px "Quicksand"';
+            ctx.fillText(displayName, startX + prefixWidth, 280);
+
+            // Reset cấu hình text cho đoạn chữ bên dưới
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#374151'; // gray-700
+
+            ctx.font = '36px "Quicksand"'; // Chỉnh lại cỡ chữ phù hợp với độ dài câu
+            wrapText(ctx, msg, canvas.width / 2, 380, 850, 52); // Đẩy chữ xuống thấp một chút
+
+            // Icon trang trí
+            ctx.font = '70px sans-serif';
+            ctx.fillText('💖 🌸 💖', canvas.width / 2, 600);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            // Giúp nét chữ mịn hơn
+            texture.minFilter = THREE.LinearFilter;
+            return texture;
+        }
+
+        const flowerIcons = ['🌸', '🌺', '🏵️', '💮', '🌷'];
+        const flowerTextures = [];
+        
+        function initFlowerTextures() {
+            flowerIcons.forEach(icon => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 128;
+                canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                ctx.font = '90px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(icon, 64, 70); // Offset slightly for vertical center
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                flowerTextures.push(texture);
+            });
+        }
+
+        function initThreeScene(letterTexture) {
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            // Đặt scene trong suốt để thấy được CSS gradient background của body
+            
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            updateCameraPosition();
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Tối ưu hiệu năng
+            container.appendChild(renderer.domElement);
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            initFlowerTextures();
+            buildEnvelope(letterTexture);
+            
+            // Xử lý Resize
+            window.addEventListener('resize', onWindowResize, false);
+            // Xử lý Click / Touch
+            window.addEventListener('pointerdown', onPointerDown, false);
+
+            animate();
+            
+            // Hiển thị hướng dẫn sau 1s
+            setTimeout(() => {
+                instruction.style.opacity = '1';
+            }, 1000);
+        }
+
+        function updateCameraPosition() {
+            const aspect = window.innerWidth / window.innerHeight;
+            // Thu nhỏ phong bì trên màn hình dọc (điện thoại)
+            if (aspect < 1) {
+                camera.position.z = 25; 
+            } else {
+                camera.position.z = 18;
+            }
+            // Nhấc toàn bộ cảnh lên trên một chút để căn giữa hoàn hảo hơn
+            camera.position.y = -1.2;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            updateCameraPosition();
+        }
+
+        function buildEnvelope(letterTexture) {
+            envelopeGroup = new THREE.Group();
+            scene.add(envelopeGroup);
+
+            const w = 7.2; // Width
+            const h = 5.0; // Height
+            
+            // 1. Mặt sau bao thư (Z = -0.1)
+            const backGeo = new THREE.PlaneGeometry(w, h);
+            const backMat = new THREE.MeshBasicMaterial({ color: 0xf48fb1 });
+            const backMesh = new THREE.Mesh(backGeo, backMat);
+            backMesh.position.z = -0.1;
+            envelopeGroup.add(backMesh);
+
+            // 2. Ruột thư (Z = 0)
+            const letterGeo = new THREE.PlaneGeometry(w * 0.9, h * 0.9);
+            const letterMat = new THREE.MeshBasicMaterial({ map: letterTexture, transparent: true });
+            letterMesh = new THREE.Mesh(letterGeo, letterMat);
+            letterMesh.position.z = 0;
+            envelopeGroup.add(letterMesh);
+
+            // 3. Mặt trước - Cánh trái
+            const leftShape = new THREE.Shape();
+            leftShape.moveTo(-w/2, -h/2);
+            leftShape.lineTo(-w/2, h/2);
+            leftShape.lineTo(-w/2 + 3.6, 0); // Đỉnh nhọn vào giữa
+            leftShape.lineTo(-w/2, -h/2);
+            const leftGeo = new THREE.ShapeGeometry(leftShape);
+            const leftMat = new THREE.MeshBasicMaterial({ color: 0xf06292 });
+            const leftMesh = new THREE.Mesh(leftGeo, leftMat);
+            leftMesh.position.z = 0.1;
+            envelopeGroup.add(leftMesh);
+
+            // 4. Mặt trước - Cánh phải
+            const rightShape = new THREE.Shape();
+            rightShape.moveTo(w/2, -h/2);
+            rightShape.lineTo(w/2, h/2);
+            rightShape.lineTo(w/2 - 3.6, 0);
+            rightShape.lineTo(w/2, -h/2);
+            const rightGeo = new THREE.ShapeGeometry(rightShape);
+            const rightMat = new THREE.MeshBasicMaterial({ color: 0xf06292 });
+            const rightMesh = new THREE.Mesh(rightGeo, rightMat);
+            rightMesh.position.z = 0.1;
+            envelopeGroup.add(rightMesh);
+
+            // 5. Mặt trước - Cánh dưới
+            const bottomShape = new THREE.Shape();
+            bottomShape.moveTo(-w/2, -h/2);
+            bottomShape.lineTo(w/2, -h/2);
+            bottomShape.lineTo(0, h/2 - 1.5);
+            bottomShape.lineTo(-w/2, -h/2);
+            const bottomGeo = new THREE.ShapeGeometry(bottomShape);
+            const bottomMat = new THREE.MeshBasicMaterial({ color: 0xec407a });
+            const bottomMesh = new THREE.Mesh(bottomGeo, bottomMat);
+            bottomMesh.position.z = 0.11;
+            envelopeGroup.add(bottomMesh);
+
+            // 6. Nắp trên (Top Flap) - Có pivot xoay
+            const topShape = new THREE.Shape();
+            topShape.moveTo(-w/2, 0); // 0 ở đây là bản lề
+            topShape.lineTo(w/2, 0);
+            topShape.lineTo(0, -2.8); // Kéo xuống dưới
+            topShape.lineTo(-w/2, 0);
+            const topGeo = new THREE.ShapeGeometry(topShape);
+            const topMat = new THREE.MeshBasicMaterial({ color: 0xd81b60 });
+            const topMesh = new THREE.Mesh(topGeo, topMat);
+            
+            topFlapGroup = new THREE.Group();
+            // Đặt bản lề (pivot) ở cạnh trên của bao thư
+            topFlapGroup.position.set(0, h/2, 0.12);
+            topFlapGroup.add(topMesh);
+            envelopeGroup.add(topFlapGroup);
+
+            // Đặt ID để raycaster dễ nhận diện bao thư
+            envelopeGroup.children.forEach(child => {
+                if(child.type === 'Mesh') child.userData.isEnvelope = true;
+                if(child.type === 'Group') child.children[0].userData.isEnvelope = true;
+            });
+        }
+
+        function toggleEnvelope() {
+            if(isAnimating) return;
+            isAnimating = true;
+            instruction.style.opacity = '0'; // Ẩn hướng dẫn khi đã click
+
+            const tl = gsap.timeline({ onComplete: () => isAnimating = false });
+            const h = 5.0; // Height of envelope
+
+            if (!isOpen) {
+                // SEQUENCE MỞ THƯ
+                // 1. Mở nắp lên (Xoay 180 độ quanh trục X)
+                tl.to(topFlapGroup.rotation, { x: Math.PI, duration: 0.5, ease: "power2.inOut" })
+                  // Nắp thụt nhẹ ra sau để thư có thể đi lên mượt mà
+                  .to(topFlapGroup.position, { z: -0.15, duration: 0.1 }, "<0.2")
+                  // 2. Thư bay vút lên trên ra khỏi bao
+                  .to(letterMesh.position, { y: h * 1.1, duration: 0.6, ease: "back.out(1.2)" })
+                  // 3. Thư trượt xuống trước bao thư, chồm lên trên z-index và phóng to
+                  .to(letterMesh.position, { y: -0.5, z: 2.0, duration: 0.8, ease: "power3.out" })
+                  .to(letterMesh.scale, { x: 1.4, y: 1.4, z: 1.4, duration: 0.8, ease: "power3.out" }, "<");
+            } else {
+                // SEQUENCE ĐÓNG THƯ
+                // 1. Thư thu nhỏ và bay ngược lên trên mượt mà hơn
+                tl.to(letterMesh.position, { y: h * 1.1, z: 0, duration: 0.8, ease: "power3.inOut" })
+                  .to(letterMesh.scale, { x: 1, y: 1, z: 1, duration: 0.8, ease: "power3.inOut" }, "<")
+                  // 2. Thư từ từ trượt lại vào trong bao
+                  .to(letterMesh.position, { y: 0, duration: 0.6, ease: "power2.inOut" })
+                  // 3. Nắp bao đóng lại êm ái
+                  .to(topFlapGroup.position, { z: 0.12, duration: 0.2 }, "<0.3")
+                  .to(topFlapGroup.rotation, { x: 0, duration: 0.6, ease: "back.out(1.2)" }, "<0.1");
+            }
+            
+            isOpen = !isOpen;
+        }
+
+        function spawnFlower(x, y, z, size, isSmall = false) {
+            const texture = flowerTextures[Math.floor(Math.random() * flowerTextures.length)];
+            const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+            const sprite = new THREE.Sprite(material);
+            
+            sprite.position.set(x, y, z);
+            sprite.scale.set(size, size, 1);
+
+            // Vật lý
+            sprite.userData = {
+                isFlower: true,
+                isSmall: isSmall,
+                vy: isSmall ? (Math.random() * 0.1 + 0.1) : -(Math.random() * 0.05 + 0.03 + size * 0.01),
+                vx: isSmall ? (Math.random() - 0.5) * 0.2 : (Math.random() - 0.5) * 0.02,
+                vz: isSmall ? (Math.random() - 0.5) * 0.1 : 0,
+                rotZ: Math.random() * Math.PI,
+                vrotZ: (Math.random() - 0.5) * 0.05
+            };
+
+            scene.add(sprite);
+            flowers.push(sprite);
+            return sprite;
+        }
+
+        function splitFlower(sprite) {
+            // Xoá hoa to
+            scene.remove(sprite);
+            flowers = flowers.filter(f => f !== sprite);
+
+            // Tạo 4 hoa nhỏ bung ra
+            const numPieces = 4;
+            for (let i = 0; i < numPieces; i++) {
+                spawnFlower(sprite.position.x, sprite.position.y, sprite.position.z, sprite.scale.x * 0.5, true);
+            }
+        }
+
+        function onPointerDown(event) {
+            // Hỗ trợ Touch và Mouse
+            let clientX = event.clientX;
+            let clientY = event.clientY;
+            if(event.changedTouches) {
+                clientX = event.changedTouches[0].clientX;
+                clientY = event.changedTouches[0].clientY;
+            }
+
+            // Chuyển đổi tọa độ màn hình sang tọa độ 3D
+            mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            // Kiểm tra va chạm với các vật thể trong scene
+            const objectsToTest = [...flowers, ...envelopeGroup.children, topFlapGroup.children[0]];
+            const intersects = raycaster.intersectObjects(objectsToTest, false);
+
+            if (intersects.length > 0) {
+                const hit = intersects[0].object;
+                
+                if (hit.userData.isFlower && !hit.userData.isSmall) {
+                    // Chạm vào hoa to -> vỡ ra
+                    splitFlower(hit);
+                } else if (hit.userData.isEnvelope || hit.userData.isFlower === undefined) {
+                    // Chạm vào bao thư -> Mở/đóng
+                    toggleEnvelope();
+                }
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Cập nhật vị trí hoa
+            for (let i = flowers.length - 1; i >= 0; i--) {
+                let f = flowers[i];
+                let data = f.userData;
+
+                f.position.x += data.vx;
+                f.position.y += data.vy;
+                f.position.z += data.vz;
+                
+                // Trọng lực cho hoa nhỏ văng lên rồi rớt xuống
+                if (data.isSmall) {
+                    data.vy -= 0.008; 
+                } else {
+                    // Hoa to rơi từ từ, lắc lư nhẹ qua lại
+                    f.position.x += Math.sin(Date.now() * 0.002 + f.id) * 0.02;
+                }
+
+                // Xoay hoa (SpriteMaterial support rotation trong r128+)
+                f.material.rotation += data.vrotZ;
+
+                // Xoá hoa khi rơi quá khung hình
+                if (f.position.y < -15 || f.position.x < -20 || f.position.x > 20) {
+                    scene.remove(f);
+                    flowers.splice(i, 1);
+                }
+            }
+
+            // Liên tục sinh ra hoa mới ở trên cao
+            if (Math.random() < 0.03) {
+                // Random vị trí X dọc theo màn hình trong không gian 3D
+                const rangeX = camera.position.z * 0.8;
+                spawnFlower((Math.random() - 0.5) * rangeX * 2, 12, (Math.random()-0.5)*5, Math.random() * 0.8 + 0.8, false);
+            }
+
+            // Thêm hiệu ứng bao thư lơ lửng nhẹ
+            if (envelopeGroup && !isOpen && !isAnimating) {
+                envelopeGroup.position.y = Math.sin(Date.now() * 0.0015) * 0.2;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Biến lưu trữ âm thanh
+        let bgMusic = null;
+
+        startBtn.addEventListener('click', async () => {
+            const name = nameInput.value.trim();
+            const age = parseInt(ageInput.value.trim());
+
+            if (!name || isNaN(age) || age <= 0 || age > 150) {
+                errorMsg.classList.remove('invisible');
+                return;
+            }
+            errorMsg.classList.add('invisible');
+
+            // Xử lý phát nhạc nền
+            const pronoun = age < 27 ? 'em' : (age < 50 ? 'chị' : 'cô');
+            let audioSrc = '';
+            if (pronoun === 'cô') {
+                audioSrc = 'co.mp3';
+            } else {
+                // Nếu là chị hoặc em thì chọn random giữa chi1.mp3 và chi2.mp3
+                audioSrc = Math.random() < 0.5 ? 'chi1.mp3' : 'chi2.mp3';
+            }
+            
+            if (!bgMusic) {
+                bgMusic = new Audio(audioSrc);
+                bgMusic.loop = true; // Cho nhạc lặp lại liên tục
+                
+                // Mute ngay từ đầu nếu người dùng chọn "Bỏ qua" nhạc
+                if (!userWantsMusic) {
+                    bgMusic.muted = true;
+                    iconUnmuted.classList.add('hidden');
+                    iconMuted.classList.remove('hidden');
+                }
+                
+                bgMusic.play().catch(err => console.log("Không thể phát nhạc:", err));
+                
+                // Hiện nút điều khiển loa sau khi hoàn tất thiết lập
+                audioControlBtn.classList.remove('hidden');
+            }
+
+            // Đợi Font Load xong hoàn toàn để vẽ lên Canvas không bị lỗi font
+            spinner.classList.remove('hidden');
+            await document.fonts.ready;
+            spinner.classList.add('hidden');
+
+            const letterTexture = createLetterTexture(name, age);
+
+            // Ẩn modal
+            modal.style.opacity = '0';
+            modal.style.visibility = 'hidden';
+            
+            // Bắt đầu 3D Scene
+            initThreeScene(letterTexture);
+            
+            // Sinh sẵn vài bông hoa ban đầu
+            for(let i=0; i<8; i++){
+                const rangeX = 15;
+                spawnFlower((Math.random() - 0.5) * rangeX * 2, (Math.random() - 0.5) * 10 + 5, (Math.random()-0.5)*5, Math.random() * 0.8 + 0.8, false);
+            }
+        });
+    </script>
+</body>
+</html>
